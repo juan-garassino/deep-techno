@@ -1,2 +1,22 @@
-dataset
+dataset/
 **/__pycache__/
+*.pyc
+
+# Large data files
+all_notes.csv
+*.csv.gz
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Checkpoints and weights (track only structure, not binaries)
+results/training_checkpoints/*.data-*
+results/training_checkpoints/*.index
+results/training_checkpoints/*.h5
+
+# Virtual environments
+venv/
+.venv/

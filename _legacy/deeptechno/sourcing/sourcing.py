@@ -134,14 +134,9 @@ def split_csv(csv_file, train_csv, val_csv, test_csv, train_p=0.6, val_p=0.2, te
 
     print("Split data into train, validation, and test sets successfully.")
 
-def create_sequences(
-    dataset: tf.data.Dataset, 
-    seq_length: int,
-    vocab_size = 128,
-    key_order = []
-) -> tf.data.Dataset:
+def create_sequences(dataset: tf.data.Dataset, seq_length: int, vocab_size = 128, key_order = []):
   """Returns TF Dataset of sequence and label examples."""
-  seq_length = seq_length+1
+  seq_length = seq_length + 1
 
   # Take 1 extra for the labels
   windows = dataset.window(seq_length, shift=1, stride=1,

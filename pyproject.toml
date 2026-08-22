@@ -1,22 +1,23 @@
-[tool.poetry]
-name = "deepTechno"
-version = "0.1.0"
-description = ""
-authors = ["juan garassino <juan.garassino@gmail.com>"]
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.10"
-torch = "^2.2.2"
-pretty-midi = "^0.2.10"
-tensorflow = "^2.16.1"
-pandas = "^2.2.2"
-matplotlib = "^3.8.4"
-pydub = "^0.25.1"
-ipython = "^8.23.0"
-pyaudio = "^0.2.14"
-
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "deepTechno"
+version = "0.2.0"
+description = "Multi-modal MIDI generation: LSTM, Music Transformer, text-conditioned and vision-conditioned"
+authors = [{name = "Juan Garassino", email = "juan.garassino@gmail.com"}]
+requires-python = ">=3.10"
+dependencies = [
+    "pretty-midi>=0.2.10",
+    "mido>=1.3.0",
+    "pandas>=2.2.0",
+    "matplotlib>=3.8.0",
+]
+
+[project.optional-dependencies]
+vision = ["timm>=0.9.0"]
+dev    = ["pytest>=8.0", "ipython>=8.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
