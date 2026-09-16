@@ -12,13 +12,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Text → MIDI (composer/style prefix) | Working | `04_train_text_conditioned.ipynb` |
 | LSTM (pitch/step/duration heads) | Working | `02_train_lstm.ipynb` |
 | Vision → MIDI (sheet music OMR) | Scaffolded | `05_vision_to_midi.ipynb` (Phase 2) |
+| MuseGAN (multi-track WGAN-GP pianoroll) | Scaffolded — **NEEDS-GPU-VALIDATION** | — (see `src/deepTechno/musegan/`) |
 
 ## Package structure
 
 ```
 src/deepTechno/
   data/
-    preprocess.py          # midi_to_notes(), notes_to_midi()
+    preprocess.py          # midi_to_notes(), notes_to_midi();
+                           #   notes_to_pianoroll(), csv_to_pianoroll_dataset() (MuseGAN bridge)
     dataset.py             # MaestroDataset (PyTorch), compute_epiano_accuracy()
     sourcing.py            # download_maestro(), find_midi_files(), split_csv(), create_sequences()
     tokenizer.py           # encode_midi(), decode_midi() — event-based MIDI vocab
@@ -37,6 +39,11 @@ src/deepTechno/
   generation/
     generate_lstm.py       # predict_next_note(), generate_midi_lstm()
     generate_transformer.py # load_model(), generate_from_primer(), generate_from_file(), generate_from_dataset()
+  musegan/                 # multi-track WGAN-GP — NEEDS-GPU-VALIDATION (scaffold only)
+    generator.py           # MuseGenerator (4-way latent), TemporalNetwork, BarGenerator, Reshape
+    critic.py              # MuseCritic (3D-conv WGAN critic)
+    binary_neuron.py       # BinaryNeuron STE output layer (salu133445 concept, PyTorch autograd.Function)
+    training_loop.py       # MuseGanTrainer (WGAN-GP), WassersteinLoss, GradientPenalty
   utils/
     device.py              # get_device(), use_cuda()
     lr_scheduling.py       # LrStepTracker, get_lr()
@@ -56,6 +63,10 @@ pip install -e ".[vision]"   # include timm for Phase 2 vision encoder
 # Smoke test imports
 python -c "from deepTechno.model.transformer import MusicTransformer; print('ok')"
 python -c "from deepTechno.encoders.text_encoder import TextEncoder; print('ok')"
+python -c "from deepTechno.musegan import MuseGenerator, MuseCritic, MuseGanTrainer; print('ok')"
+
+# MuseGAN (needs torch: pip install -e ".[musegan]"). Shape tests only — no training here:
+pytest tests/test_musegan.py -q
 
 # Run LSTM training locally
 python -c "
@@ -96,6 +107,19 @@ The MIDI event vocabulary (in `model/constants.py`):
 - **LSTM**: TF/Keras, multi-output (pitch softmax + step/duration regression with positive-pressure MSE loss).
 - **Text conditioning**: `TextEncoder` embeds composer/title BPE tokens into `d_model`-dimensional prefix. Prepend to MIDI token embeddings before the transformer. Vocab built from MAESTRO metadata (~200 composers). No external LLM.
 - **Vision conditioning** (Phase 2): `VisionEncoder` patch-projects sheet music images → encoder memory → cross-attention in decoder. Target dataset: PrIMuS (87k PNG + MIDI pairs).
+- **MuseGAN** (`musegan/`, PyTorch): ported from akanametov/musegan (generator/critic + WGAN-GP) with the binary-neuron STE *concept* from salu133445/musegan reimplemented via `torch.autograd.Function`. The generator takes a **4-way latent** — `forward(chords, style, melody, groove)` — where chords/style are shared across tracks (chords time-varying via `TemporalNetwork`, style static) and melody/groove are per-track (melody time-varying, groove static). Output pianoroll shape `(batch, n_tracks, n_bars, n_steps_per_bar, n_pitches)`; techno default `4 × 2 × 16 × 84` (16-step 4/4 grid). `MuseGanTrainer` runs `repeat` critic steps per generator step with a gradient-penalty of weight 10.
+  - **Sizing gotcha**: `BarGenerator` has a fixed tconv chain requiring `hid_features // hid_channels == 2`. Via `MuseGenerator` this means passing `hid_features == hid_channels`; a `ValueError` is raised otherwise.
+
+## all_notes.csv → MuseGAN bridge
+
+The MuseGAN subsystem consumes multi-track pianoroll tensors, but `all_notes.csv` (14.2M rows, columns `pitch,start,end,step,duration`, seconds) is a flat note table. `data/preprocess.py` bridges the two:
+
+- `notes_to_pianoroll(notes, ...)` — quantise one window of notes onto a straight 4/4 grid (default 128 BPM), returning a binary `(n_tracks, n_bars, n_steps_per_bar, n_pitches)` tensor. Since the CSV has no per-track channel, notes are **split into tracks by pitch register**.
+- `csv_to_pianoroll_dataset(csv_path, max_windows=...)` — slice the CSV into consecutive `n_bars`-long windows, returning `(n_windows, n_tracks, n_bars, n_steps_per_bar, n_pitches)`.
+
+## NEEDS-GPU-VALIDATION
+
+The MuseGAN subsystem is a **scaffold**: fully wired (generator, critic, WGAN-GP loop, STE) and **shape/import-tested on CPU** (`tests/test_musegan.py`), but **no real training has run**. Before use, validate on a GPU (RunPod, `garassino-ml`): (1) train `MuseGanTrainer` on `csv_to_pianoroll_dataset(all_notes.csv)` for a few epochs; (2) confirm losses are finite and the critic separates real/fake; (3) tune the pitch-register → track assignment and BPM to the actual dataset; (4) add the salu133445 music-metrics eval battery (empty-bar ratio, used-pitch-classes, qualified-note rate) as a follow-up.
 
 ## Sibling audio repos
 
