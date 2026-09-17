@@ -20,3 +20,6 @@ results/training_checkpoints/*.h5
 # Virtual environments
 venv/
 .venv/
+
+# Packaging metadata (editable installs)
+*.egg-info/
