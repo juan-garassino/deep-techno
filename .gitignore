@@ -23,3 +23,4 @@ venv/
 
 # Packaging metadata (editable installs)
 *.egg-info/
+results/training_checkpoints/checkpoint
