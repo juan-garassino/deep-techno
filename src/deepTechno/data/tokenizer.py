@@ -94,10 +94,14 @@ def _note_preprocess(sustains, notes):
                 note_stream.append(note)
             elif note.start > sustain.end:
                 notes = notes[note_idx:]
-                sustain.transposition_notes()
                 break
             else:
                 sustain.add_managed_note(note)
+        else:
+            notes = []  # every remaining note was consumed by this sustain
+        sustain.transposition_notes()
+    # Notes after the last sustain (or all notes when there is no CC64 pedal).
+    note_stream += notes
     for sustain in sustains:
         note_stream += sustain.managed_notes
     note_stream.sort(key=lambda x: x.start)
@@ -164,7 +168,7 @@ def encode_midi(file_path):
     mid = pretty_midi.PrettyMIDI(midi_file=file_path)
     for inst in mid.instruments:
         ctrls = _control_preprocess([c for c in inst.control_changes if c.number == 64])
-        notes += _note_preprocess(ctrls, inst.notes)
+        notes += _note_preprocess(ctrls, sorted(inst.notes, key=lambda n: n.start))
 
     dnotes = _divide_note(notes)
     dnotes.sort(key=lambda x: x.time)

@@ -17,7 +17,7 @@ def load_model(weights_path: str, n_layers=6, num_heads=8, d_model=512,
         n_layers=n_layers, num_heads=num_heads, d_model=d_model,
         dim_feedforward=dim_feedforward, max_sequence=max_sequence, rpr=rpr,
     ).to(get_device())
-    model.load_state_dict(torch.load(weights_path, map_location=get_device()))
+    model.load_state_dict(torch.load(weights_path, map_location=get_device(), weights_only=True))
     model.eval()
     return model
 
