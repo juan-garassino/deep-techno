@@ -83,7 +83,7 @@ Run #2 (2026-10-17), cumulative over pass 1 and pass 2:
 | Failing tests | 0 | 0 |
 | Tests passed (torch venv) | 12 | 36 (+1 skipped: TF file) |
 | Tests passed (TF venv, `test_guardian_lstm.py`) | n/a (no TF tests) | 4 |
-| Known bugs open | 14 (found this run) | 0 |
+| Known bugs open | 13 (found this run: G-010..G-022) | 0 |
 | Lint errors (ruff default rules) | 19 | 0 |
 | Coverage (deepTechno, torch venv) | 40% | 81% |
 
