@@ -40,8 +40,16 @@ class MuseCritic(nn.Module):
         self.n_bars = n_bars
         self.n_steps_per_bar = n_steps_per_bar
         self.n_pitches = n_pitches
-        # flattened feature count depends on the bar count after the temporal convs
-        in_features = 4 * hid_channels if n_bars == 2 else 12 * hid_channels
+        # The two temporal convs (kernel 2, then n_bars - 1) collapse the bar axis
+        # to 1 for ANY n_bars, and the pitch/time convs collapse 84 -> 1 and
+        # 16 -> 1, so the flatten size is 4 * hid_channels. (A former
+        # ``12 * hid_channels`` branch for n_bars != 2 crashed in the Linear.)
+        if n_bars < 2 or n_steps_per_bar != 16 or n_pitches != 84:
+            raise ValueError(
+                "MuseCritic supports n_bars >= 2 on a 16-step x 84-pitch grid "
+                f"(got n_bars={n_bars}, n_steps_per_bar={n_steps_per_bar}, n_pitches={n_pitches})."
+            )
+        in_features = 4 * hid_channels
         self.net = nn.Sequential(
             # input: (batch, n_tracks, n_bars, n_steps_per_bar, n_pitches)
             nn.Conv3d(self.n_tracks, hid_channels, (2, 1, 1), (1, 1, 1), padding=0),

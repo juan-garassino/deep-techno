@@ -9,7 +9,8 @@ class SmoothCrossEntropyLoss(_Loss):
     __constants__ = ["label_smoothing", "vocab_size", "ignore_index", "reduction"]
 
     def __init__(self, label_smoothing, vocab_size, ignore_index=-100, reduction="mean", is_logits=True):
-        assert 0.0 <= label_smoothing <= 1.0
+        if not 0.0 <= label_smoothing <= 1.0:
+            raise ValueError(f"label_smoothing must be in [0, 1], got {label_smoothing}")
         super().__init__(reduction=reduction)
         self.label_smoothing = label_smoothing
         self.vocab_size = vocab_size

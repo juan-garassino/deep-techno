@@ -78,7 +78,8 @@ class MusicTransformer(nn.Module):
         return y
 
     def generate(self, primer=None, target_seq_length=1024, beam=0, beam_chance=1.0):
-        assert not self.training, "Cannot generate while in training mode"
+        if self.training:
+            raise RuntimeError("Cannot generate while in training mode; call model.eval() first")
 
         gen_seq = torch.full((1, target_seq_length), TOKEN_PAD, dtype=TORCH_LABEL_TYPE, device=get_device())
         num_primer = len(primer)

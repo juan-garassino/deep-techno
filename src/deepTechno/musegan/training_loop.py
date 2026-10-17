@@ -151,6 +151,8 @@ class MuseGanTrainer:
             epoch_loss = {k: 0.0 for k in history}
             n_batches = 0
             for real in dataloader:
+                if isinstance(real, (list, tuple)):  # DataLoader(TensorDataset(x)) yields [x]
+                    real = real[0]
                 real = real.to(self.device)
                 n_batches += 1
                 acc = {"closs": 0.0, "cfloss": 0.0, "crloss": 0.0, "cploss": 0.0}
