@@ -1,5 +1,4 @@
 """PyTorch Dataset wrappers for MAESTRO."""
-import os
 import random
 
 import pandas as pd

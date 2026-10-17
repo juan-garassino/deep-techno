@@ -9,7 +9,6 @@ Vocabulary is built from the MAESTRO canonical_composer + canonical_title fields
 (~200 unique composers, ~1,200 unique titles). No external LLM required.
 """
 import json
-import os
 import re
 from typing import List, Optional
 

@@ -99,8 +99,10 @@ class MusicTransformer(nn.Module):
                 beam_ran = random.uniform(0, 1)
                 if beam_ran <= beam_chance:
                     top_res, top_i = torch.topk(token_probs.flatten(), beam)
-                    beam_rows = top_i // VOCAB_SIZE
-                    beam_cols = top_i % VOCAB_SIZE
+                    # token_probs is sliced to TOKEN_END columns, not VOCAB_SIZE.
+                    width = token_probs.shape[-1]
+                    beam_rows = top_i // width
+                    beam_cols = top_i % width
                     gen_seq = gen_seq[beam_rows, :]
                     gen_seq[..., cur_i] = beam_cols
                 else:

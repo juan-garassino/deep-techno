@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.loss import _Loss
 
@@ -18,8 +17,12 @@ class SmoothCrossEntropyLoss(_Loss):
         self.input_is_logits = is_logits
 
     def forward(self, input, target):
-        mask = (target == self.ignore_index).unsqueeze(-1)
-        q = F.one_hot(target.long(), self.vocab_size).type(torch.float32)
+        ignored = target == self.ignore_index
+        mask = ignored.unsqueeze(-1)
+        # Ignored positions may hold an out-of-range id (default -100), which
+        # F.one_hot rejects; they are masked to zero below anyway.
+        safe_target = target.long().masked_fill(ignored, 0)
+        q = F.one_hot(safe_target, self.vocab_size).type(torch.float32)
         u = 1.0 / self.vocab_size
         q_prime = (1.0 - self.label_smoothing) * q + self.label_smoothing * u
         q_prime = q_prime.masked_fill(mask, 0)

@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 
 from torch.nn import functional as F
 from torch.nn.parameter import Parameter
@@ -8,7 +7,7 @@ from torch.nn.modules.transformer import _get_clones
 from torch.nn.modules.linear import Linear
 from torch.nn.modules.dropout import Dropout
 from torch.nn.modules.normalization import LayerNorm
-from torch.nn.init import *
+from torch.nn.init import constant_, xavier_normal_, xavier_uniform_
 from torch.nn.functional import linear, softmax, dropout
 
 

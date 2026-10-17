@@ -8,7 +8,7 @@ from deepTechno.data.dataset import MaestroDataset
 from deepTechno.data.tokenizer import encode_midi, decode_midi
 from deepTechno.model.constants import TORCH_LABEL_TYPE
 from deepTechno.model.transformer import MusicTransformer
-from deepTechno.utils.device import get_device, use_cuda
+from deepTechno.utils.device import get_device
 
 
 def load_model(weights_path: str, n_layers=6, num_heads=8, d_model=512,

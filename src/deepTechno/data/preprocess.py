@@ -14,6 +14,9 @@ import pretty_midi
 def midi_to_notes(midi_file: str) -> pd.DataFrame:
     """Parse a MIDI file into a DataFrame with columns pitch, start, end, step, duration."""
     pm = pretty_midi.PrettyMIDI(midi_file)
+    columns = ["pitch", "start", "end", "step", "duration"]
+    if not pm.instruments or not pm.instruments[0].notes:
+        return pd.DataFrame({c: np.array([], dtype=float) for c in columns})
     instrument = pm.instruments[0]
     notes = collections.defaultdict(list)
     sorted_notes = sorted(instrument.notes, key=lambda n: n.start)

@@ -5,6 +5,8 @@ RANGE_NOTE_ON    = 128
 RANGE_NOTE_OFF   = 128
 RANGE_VEL        = 32
 RANGE_TIME_SHIFT = 100
+# Mirrors model/constants.py (kept local so the tokenizer stays torch-free).
+TOKEN_END = RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_VEL + RANGE_TIME_SHIFT
 
 START_IDX = {
     "note_on":    0,
@@ -184,8 +186,19 @@ def encode_midi(file_path):
 
 
 def decode_midi(idx_array, file_path=None):
-    """Decode a list of integer tokens back to a PrettyMIDI object."""
-    event_sequence = [Event.from_int(i) for i in idx_array]
+    """Decode a list of integer tokens back to a PrettyMIDI object.
+
+    Decoding stops at the first TOKEN_END and skips TOKEN_PAD (and anything
+    outside the event vocabulary): those are not MIDI events and would
+    otherwise decode as out-of-range velocities (128+).
+    """
+    event_sequence = []
+    for i in idx_array:
+        i = int(i)
+        if i == TOKEN_END:
+            break
+        if 0 <= i < TOKEN_END:
+            event_sequence.append(Event.from_int(i))
     snote_seq = _event_seq_to_snote_seq(event_sequence)
     note_seq = _merge_note(snote_seq)
     note_seq.sort(key=lambda x: x.start)
