@@ -90,8 +90,10 @@ def run_transformer_training(config: TransformerConfig):
         use_cuda(False)
 
     os.makedirs(config.output_dir, exist_ok=True)
-    weights_dir  = os.path.join(config.output_dir, "weights");  os.makedirs(weights_dir,  exist_ok=True)
-    results_dir  = os.path.join(config.output_dir, "results");  os.makedirs(results_dir,  exist_ok=True)
+    weights_dir  = os.path.join(config.output_dir, "weights")
+    results_dir  = os.path.join(config.output_dir, "results")
+    os.makedirs(weights_dir, exist_ok=True)
+    os.makedirs(results_dir, exist_ok=True)
     results_file = os.path.join(results_dir, "results.csv")
     best_loss_file = os.path.join(results_dir, "best_loss.pt")
     best_acc_file  = os.path.join(results_dir, "best_acc.pt")
@@ -109,8 +111,10 @@ def run_transformer_training(config: TransformerConfig):
 
     start_epoch = BASELINE_EPOCH
     if config.continue_weights:
-        model.load_state_dict(torch.load(config.continue_weights))
-        start_epoch = config.continue_epoch
+        model.load_state_dict(torch.load(config.continue_weights, map_location=get_device(), weights_only=True))
+        # Without continue_epoch, resume from epoch 0 (skip the baseline eval)
+        # instead of range(None, ...) raising TypeError.
+        start_epoch = config.continue_epoch if config.continue_epoch is not None else 0
 
     eval_loss_fn  = nn.CrossEntropyLoss(ignore_index=TOKEN_PAD)
     train_loss_fn = (SmoothCrossEntropyLoss(config.ce_smoothing, VOCAB_SIZE, ignore_index=TOKEN_PAD)

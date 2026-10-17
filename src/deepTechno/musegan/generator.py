@@ -100,6 +100,13 @@ class BarGenerator(nn.Module):
                 f"(got hid_features={hid_features}, hid_channels={hid_channels}). "
                 "Via MuseGenerator this means hid_features == hid_channels."
             )
+        # The chain expands time 2 -> 16 (three stride-2 tconvs) and pitch
+        # 1 -> 84 (7 * 12), so other grids only fail later inside Reshape.view().
+        if n_steps_per_bar != 16 or n_pitches != 84:
+            raise ValueError(
+                "BarGenerator only produces a 16-step x 84-pitch bar "
+                f"(got n_steps_per_bar={n_steps_per_bar}, n_pitches={n_pitches})."
+            )
         self.net = nn.Sequential(
             # input: (batch, 4*z_dimension)
             nn.Linear(4 * z_dimension, hid_features),

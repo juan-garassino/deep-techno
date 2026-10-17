@@ -9,7 +9,6 @@ Vocabulary is built from the MAESTRO canonical_composer + canonical_title fields
 (~200 unique composers, ~1,200 unique titles). No external LLM required.
 """
 import json
-import os
 import re
 from typing import List, Optional
 
@@ -26,7 +25,8 @@ EOS_TOKEN  = "<eos>"  # end of text prefix
 def _tokenize(text: str) -> List[str]:
     """Simple whitespace + punctuation tokenizer."""
     text = text.lower().strip()
-    tokens = re.findall(r"[a-z0-9]+|[^\w\s]", text)
+    # [^\W_]+ keeps accented letters (Frédéric, Dvořák) inside one token.
+    tokens = re.findall(r"[^\W_]+|[^\w\s]", text)
     return tokens
 
 

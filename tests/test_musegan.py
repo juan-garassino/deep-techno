@@ -15,11 +15,11 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from deepTechno.data.preprocess import (
+from deepTechno.data.preprocess import (  # noqa: E402
     csv_to_pianoroll_dataset,
     notes_to_pianoroll,
 )
-from deepTechno.musegan import (
+from deepTechno.musegan import (  # noqa: E402
     BinaryNeuron,
     MuseCritic,
     MuseGanTrainer,

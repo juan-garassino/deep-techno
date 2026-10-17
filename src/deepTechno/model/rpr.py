@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 
 from torch.nn import functional as F
 from torch.nn.parameter import Parameter
@@ -8,7 +7,7 @@ from torch.nn.modules.transformer import _get_clones
 from torch.nn.modules.linear import Linear
 from torch.nn.modules.dropout import Dropout
 from torch.nn.modules.normalization import LayerNorm
-from torch.nn.init import *
+from torch.nn.init import constant_, xavier_normal_, xavier_uniform_
 from torch.nn.functional import linear, softmax, dropout
 
 
@@ -21,7 +20,9 @@ class TransformerEncoderRPR(Module):
         self.num_layers = num_layers
         self.norm = norm
 
-    def forward(self, src, mask=None, src_key_padding_mask=None):
+    def forward(self, src, mask=None, src_key_padding_mask=None, is_causal=None):
+        # is_causal is passed by nn.Transformer on torch>=2.1; the explicit mask
+        # already encodes causality, so it is accepted and ignored.
         output = src
         for layer in self.layers:
             output = layer(output, src_mask=mask, src_key_padding_mask=src_key_padding_mask)

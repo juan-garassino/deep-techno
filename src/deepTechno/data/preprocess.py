@@ -14,6 +14,9 @@ import pretty_midi
 def midi_to_notes(midi_file: str) -> pd.DataFrame:
     """Parse a MIDI file into a DataFrame with columns pitch, start, end, step, duration."""
     pm = pretty_midi.PrettyMIDI(midi_file)
+    columns = ["pitch", "start", "end", "step", "duration"]
+    if not pm.instruments or not pm.instruments[0].notes:
+        return pd.DataFrame({c: np.array([], dtype=float) for c in columns})
     instrument = pm.instruments[0]
     notes = collections.defaultdict(list)
     sorted_notes = sorted(instrument.notes, key=lambda n: n.start)
@@ -87,6 +90,7 @@ def notes_to_pianoroll(
     pitch_low: int = DEFAULT_PITCH_LOW,
     bpm: float = 128.0,
     dtype: np.dtype = np.float32,
+    origin: float | None = None,
 ) -> np.ndarray:
     """Quantise a note DataFrame into a binary multi-track pianoroll tensor.
 
@@ -105,6 +109,9 @@ def notes_to_pianoroll(
         straight 4/4). One bar = ``4 * 60 / bpm`` seconds.
     dtype:
         Output dtype (float32 for direct feeding to torch).
+    origin:
+        Time (seconds) of step 0. Defaults to the earliest note start; pass the
+        window start so the grid stays bar-aligned.
 
     Returns
     -------
@@ -121,7 +128,7 @@ def notes_to_pianoroll(
 
     starts = notes["start"].to_numpy(dtype=float)
     pitches = notes["pitch"].to_numpy()
-    origin = float(starts.min())
+    origin = float(starts.min()) if origin is None else float(origin)
 
     for start, pitch in zip(starts, pitches):
         step_idx = int(round((start - origin) / sec_per_step))
@@ -150,8 +157,8 @@ def csv_to_pianoroll_dataset(
 ) -> np.ndarray:
     """Slice ``all_notes.csv`` into a batch of pianoroll windows.
 
-    Notes are read in ``start`` order and chunked into consecutive
-    ``n_bars``-long windows, each quantised by :func:`notes_to_pianoroll`.
+    Notes are split into pieces (a drop in ``start`` starts a new piece) and
+    each piece is chunked into consecutive ``n_bars``-long windows, each quantised by :func:`notes_to_pianoroll`.
 
     Returns
     -------
@@ -159,18 +166,24 @@ def csv_to_pianoroll_dataset(
         Shape ``(n_windows, n_tracks, n_bars, n_steps_per_bar, n_pitches)``.
     """
     df = pd.read_csv(csv_path)
-    df = df.sort_values("start").reset_index(drop=True)
+    # all_notes.csv concatenates pieces whose clocks each restart near 0 s, and
+    # midi_to_notes emits each piece sorted by start. A drop in ``start`` marks
+    # a piece boundary, so window per piece instead of sorting globally (which
+    # would interleave unrelated pieces into the same window).
+    piece = (df["start"].diff() < 0).cumsum()
     sec_per_window = n_bars * 4.0 * 60.0 / bpm
-    origin = float(df["start"].min())
-    df = df.assign(_window=((df["start"] - origin) // sec_per_window).astype(int))
+    piece_origin = df.groupby(piece)["start"].transform("min")
+    window = ((df["start"] - piece_origin) // sec_per_window).astype(int)
+    df = df.assign(_piece=piece, _window=window)
 
     windows = []
-    for _, group in df.groupby("_window"):
+    for (_, w), group in df.groupby(["_piece", "_window"], sort=True):
+        origin = float(piece_origin.loc[group.index[0]]) + w * sec_per_window
         windows.append(
             notes_to_pianoroll(
                 group, n_tracks=n_tracks, n_bars=n_bars,
                 n_steps_per_bar=n_steps_per_bar, n_pitches=n_pitches,
-                pitch_low=pitch_low, bpm=bpm,
+                pitch_low=pitch_low, bpm=bpm, origin=origin,
             )
         )
         if max_windows is not None and len(windows) >= max_windows:

@@ -78,7 +78,8 @@ class MusicTransformer(nn.Module):
         return y
 
     def generate(self, primer=None, target_seq_length=1024, beam=0, beam_chance=1.0):
-        assert not self.training, "Cannot generate while in training mode"
+        if self.training:
+            raise RuntimeError("Cannot generate while in training mode; call model.eval() first")
 
         gen_seq = torch.full((1, target_seq_length), TOKEN_PAD, dtype=TORCH_LABEL_TYPE, device=get_device())
         num_primer = len(primer)
@@ -99,8 +100,10 @@ class MusicTransformer(nn.Module):
                 beam_ran = random.uniform(0, 1)
                 if beam_ran <= beam_chance:
                     top_res, top_i = torch.topk(token_probs.flatten(), beam)
-                    beam_rows = top_i // VOCAB_SIZE
-                    beam_cols = top_i % VOCAB_SIZE
+                    # token_probs is sliced to TOKEN_END columns, not VOCAB_SIZE.
+                    width = token_probs.shape[-1]
+                    beam_rows = top_i // width
+                    beam_cols = top_i % width
                     gen_seq = gen_seq[beam_rows, :]
                     gen_seq[..., cur_i] = beam_cols
                 else:
@@ -115,6 +118,7 @@ class MusicTransformer(nn.Module):
 class DummyDecoder(nn.Module):
     """Pass-through decoder that returns encoder memory — makes nn.Transformer decoder-only."""
 
-    def forward(self, tgt, memory, tgt_mask, memory_mask,
-                tgt_key_padding_mask, memory_key_padding_mask):
+    def forward(self, tgt, memory, *args, **kwargs):
+        # nn.Transformer passes extra kwargs (tgt_is_causal, memory_is_causal
+        # since torch 2.1); a fixed signature makes every forward() crash.
         return memory

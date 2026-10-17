@@ -8,13 +8,16 @@ from deepTechno.data.preprocess import notes_to_midi
 def predict_next_note(notes: np.ndarray, model: tf.keras.Model,
                       temperature: float = 1.0):
     """Return (pitch, step, duration) for the next note given a context window."""
-    assert temperature > 0
+    if temperature <= 0:
+        raise ValueError(f"temperature must be > 0, got {temperature}")
     inputs = tf.expand_dims(notes, 0)
     predictions = model.predict(inputs, verbose=0)
     pitch_logits = predictions["pitch"] / temperature
-    pitch = int(tf.squeeze(tf.random.categorical(pitch_logits, num_samples=1), axis=-1))
-    step     = float(tf.maximum(0, tf.squeeze(predictions["step"],     axis=-1)))
-    duration = float(tf.maximum(0, tf.squeeze(predictions["duration"], axis=-1)))
+    # Reduce to true scalars: int()/float() of a shape-(1,) tensor raises
+    # TypeError on NumPy 2 ("only 0-dimensional arrays can be converted").
+    pitch = int(tf.reshape(tf.random.categorical(pitch_logits, num_samples=1), [-1])[0])
+    step     = max(0.0, float(np.reshape(predictions["step"],     -1)[0]))
+    duration = max(0.0, float(np.reshape(predictions["duration"], -1)[0]))
     return pitch, step, duration
 
 
@@ -48,7 +51,10 @@ def generate_midi_lstm(model: tf.keras.Model, seed_notes: np.ndarray,
         end = start + duration
         generated.append((pitch, step, duration, start, end))
         input_notes = np.delete(input_notes, 0, axis=0)
-        input_notes = np.append(input_notes, np.expand_dims((pitch, step, duration), 0), axis=0)
+        # Feed the context back on the training scale (pitch / vocab_size, see
+        # sourcing.create_sequences); the raw pitch goes only into the output.
+        next_input = (pitch / vocab_size, step, duration)
+        input_notes = np.append(input_notes, np.expand_dims(next_input, 0), axis=0)
         prev_start = start
 
     generated_df = pd.DataFrame(generated, columns=[*key_order, "start", "end"])
