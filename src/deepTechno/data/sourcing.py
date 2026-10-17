@@ -2,9 +2,12 @@
 import csv
 import os
 import zipfile
+from typing import TYPE_CHECKING
 
 import pandas as pd
-import tensorflow as tf
+
+if TYPE_CHECKING:  # TF is imported lazily inside the functions that need it
+    import tensorflow as tf
 
 MAESTRO_URL = "https://storage.googleapis.com/magentadata/datasets/maestro/v2.0.0/maestro-v2.0.0-midi.zip"
 
@@ -15,6 +18,8 @@ def download_maestro(data_dir: str) -> str:
         print(f"MAESTRO already present at {data_dir}")
         return data_dir
 
+    import tensorflow as tf  # lazy: the CSV/zip helpers work without TF
+
     zip_path = tf.keras.utils.get_file(
         "maestro-v2.0.0-midi.zip",
         origin=MAESTRO_URL,
@@ -23,8 +28,24 @@ def download_maestro(data_dir: str) -> str:
         cache_subdir=os.path.basename(data_dir),
     )
     with zipfile.ZipFile(zip_path, "r") as zf:
-        zf.extractall(data_dir)
+        safe_extract(zf, data_dir)
     return data_dir
+
+
+def safe_extract(zf: zipfile.ZipFile, dest: str) -> None:
+    """Extract ``zf`` into ``dest``, refusing members that would land outside it.
+
+    Checks every member before writing anything (zip-slip defence in depth on
+    top of ``extractall``'s own sanitising).
+    """
+    root = os.path.realpath(dest)
+    for name in zf.namelist():
+        if os.path.isabs(name) or name.startswith(("/", "\\")):
+            raise ValueError(f"Refusing absolute path in archive: {name!r}")
+        target = os.path.realpath(os.path.join(root, name))
+        if os.path.commonpath([root, target]) != root:
+            raise ValueError(f"Refusing path outside {dest!r}: {name!r}")
+    zf.extractall(root)
 
 
 def find_midi_files(dataset_folder: str, csv_filename: str):
@@ -62,14 +83,19 @@ def split_csv(csv_file: str, train_csv: str, val_csv: str, test_csv: str,
     print(f"Split: {n_train} train / {n_val} val / {n - n_train - n_val} test")
 
 
-def create_sequences(dataset: tf.data.Dataset, seq_length: int,
-                     vocab_size: int = 128, key_order=None) -> tf.data.Dataset:
+def create_sequences(dataset: "tf.data.Dataset", seq_length: int,
+                     vocab_size: int = 128, key_order=None) -> "tf.data.Dataset":
     """Sliding-window sequences + label split for LSTM training."""
     if key_order is None:
         key_order = ["pitch", "step", "duration"]
 
+    import tensorflow as tf
+
     windows = dataset.window(seq_length + 1, shift=1, stride=1, drop_remainder=True)
-    flatten = lambda x: x.batch(seq_length + 1, drop_remainder=True)
+
+    def flatten(x):
+        return x.batch(seq_length + 1, drop_remainder=True)
+
     sequences = windows.flat_map(flatten)
 
     def scale_pitch(x):

@@ -117,6 +117,7 @@ class MusicTransformer(nn.Module):
 class DummyDecoder(nn.Module):
     """Pass-through decoder that returns encoder memory — makes nn.Transformer decoder-only."""
 
-    def forward(self, tgt, memory, tgt_mask, memory_mask,
-                tgt_key_padding_mask, memory_key_padding_mask):
+    def forward(self, tgt, memory, *args, **kwargs):
+        # nn.Transformer passes extra kwargs (tgt_is_causal, memory_is_causal
+        # since torch 2.1); a fixed signature makes every forward() crash.
         return memory

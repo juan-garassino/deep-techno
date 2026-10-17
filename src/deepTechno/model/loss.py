@@ -28,7 +28,8 @@ class SmoothCrossEntropyLoss(_Loss):
         q_prime = q_prime.masked_fill(mask, 0)
         ce = self.cross_entropy_with_logits(q_prime, input)
         if self.reduction == "mean":
-            return ce.sum() / torch.sum(target != self.ignore_index)
+            # clamp: an all-ignored batch gives 0 instead of 0/0 = NaN.
+            return ce.sum() / torch.sum(target != self.ignore_index).clamp_min(1)
         elif self.reduction == "sum":
             return ce.sum()
         raise NotImplementedError

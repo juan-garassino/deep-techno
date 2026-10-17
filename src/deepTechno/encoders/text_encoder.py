@@ -25,7 +25,8 @@ EOS_TOKEN  = "<eos>"  # end of text prefix
 def _tokenize(text: str) -> List[str]:
     """Simple whitespace + punctuation tokenizer."""
     text = text.lower().strip()
-    tokens = re.findall(r"[a-z0-9]+|[^\w\s]", text)
+    # [^\W_]+ keeps accented letters (Frédéric, Dvořák) inside one token.
+    tokens = re.findall(r"[^\W_]+|[^\w\s]", text)
     return tokens
 
 

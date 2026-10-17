@@ -20,7 +20,9 @@ class TransformerEncoderRPR(Module):
         self.num_layers = num_layers
         self.norm = norm
 
-    def forward(self, src, mask=None, src_key_padding_mask=None):
+    def forward(self, src, mask=None, src_key_padding_mask=None, is_causal=None):
+        # is_causal is passed by nn.Transformer on torch>=2.1; the explicit mask
+        # already encodes causality, so it is accepted and ignored.
         output = src
         for layer in self.layers:
             output = layer(output, src_mask=mask, src_key_padding_mask=src_key_padding_mask)

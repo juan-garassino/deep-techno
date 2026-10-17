@@ -112,7 +112,9 @@ def run_transformer_training(config: TransformerConfig):
     start_epoch = BASELINE_EPOCH
     if config.continue_weights:
         model.load_state_dict(torch.load(config.continue_weights, map_location=get_device(), weights_only=True))
-        start_epoch = config.continue_epoch
+        # Without continue_epoch, resume from epoch 0 (skip the baseline eval)
+        # instead of range(None, ...) raising TypeError.
+        start_epoch = config.continue_epoch if config.continue_epoch is not None else 0
 
     eval_loss_fn  = nn.CrossEntropyLoss(ignore_index=TOKEN_PAD)
     train_loss_fn = (SmoothCrossEntropyLoss(config.ce_smoothing, VOCAB_SIZE, ignore_index=TOKEN_PAD)
