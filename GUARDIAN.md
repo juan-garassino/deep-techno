@@ -94,6 +94,7 @@ The run #2 table lists only the metrics recorded in run #2.
 - Without torch, the existing suite reports "1 skipped" (`pytest.importorskip`), which hides that nothing ran. Install torch to get the real baseline.
 - `download.pytorch.org` is blocked by the proxy. The PyPI torch wheel installs and runs on CPU.
 - osv.dev API calls return 403 through the proxy, so pip-audit against `uv export` output is the reliable dependency scanner here.
+- The gitleaks tarball in the scratchpad turned out to be v8.18.4, whose CLI is `gitleaks detect --source . [--no-git]`; the `git`/`dir` subcommands need v8.19 or later. v8.18.4's `square-access-token` rule flags one `sha256:eaaa…` package hash in `uv.lock` as a false positive. It is not a credential, so allowlist it or use a newer gitleaks.
 - Mocked-forward tests can hide a broken real forward: run #1's beam test passed while every real `MusicTransformer.forward` crashed (G-014). Keep at least one unmocked tiny-model test for each public model path.
 - Check that each new regression test fails on the unfixed code (`git stash`, run the test, `git stash pop`). The first draft of the decode test passed on buggy code because `encode_midi` emits its own velocity token.
 - `tokenizer.py` is deliberately torch-free (`model/constants.py` imports torch), so tokenizer-side constants are mirrored locally rather than imported.
